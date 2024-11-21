@@ -1,0 +1,297 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name"
+		},
+		"LS_EMF_SQL_DB": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Params_Q_P_A')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "This pipeline calculates the Quality/Performance/Availability Parameters. It runs 3 SP respectively and stores data in 3 tables",
+				"activities": [
+					{
+						"name": "SP_Live_Total_Production_Shiftwise",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_Total_Production_Shiftwise]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_Total_Production_Shiftwise",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					},
+					{
+						"name": "SP_Live_DT_Shiftwise",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2_copy2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_DT_Shiftwise]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2_copy1",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_DT_Shiftwise",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 10
+						}
+					},
+					{
+						"name": "SP_Live_OEE_Calc",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2_copy1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_OEE_Calc]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_Live_RPM_Calc",
+						"description": "Convert Raw values to RPM on Per Minute",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_RPM_Calc_INPUT]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait3",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_RPM_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SP_Live_BPM_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 10
+						}
+					},
+					{
+						"name": "SP_Live_BPM_Calc",
+						"description": "Convert Raw values to BPM on Per Minute",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_BPM_Calc_INPUT]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_Events_Downtimes_Mapping",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait4",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Events_Downtimes_Mapping]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait4",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_OEE_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					},
+					{
+						"name": "SP_Live_Total_Hourly_RPM_BPM",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_Total_Hourly_RPM_BPM]"
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('LS_EMF_SQL_DB')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2_copy2",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_Total_Hourly_RPM_BPM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					}
+				],
+				"folder": {
+					"name": "Live_OEE_Logics/OEE_Parameters"
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-10-17T04:47:07Z"
+			},
+			"dependsOn": []
+		}
+	]
+}
