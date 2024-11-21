@@ -1,0 +1,9 @@
+{
+	"name": "talha-test-df",
+	"location": "southeastasia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "cc816979-a2c4-482c-b7df-39d21b6ff563",
+		"tenantId": "3f73a44e-6480-4a05-a85f-621cc10661f6"
+	}
+}

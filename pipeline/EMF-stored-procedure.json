@@ -1,0 +1,75 @@
+{
+	"name": "EMF-stored-procedure",
+	"properties": {
+		"activities": [
+			{
+				"name": "execute sp 1",
+				"description": "this is dbo. usp insert energy data stored procedure ",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[usp_InsertEnergyData]"
+				},
+				"linkedServiceName": {
+					"referenceName": "EMF_test_linkup",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "execute sp 2",
+				"description": "this is dbo. sp data retention stored procedure.",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Wait",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[SP_Data_Retention]"
+				},
+				"linkedServiceName": {
+					"referenceName": "EMF_test_linkup",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Wait",
+				"type": "Wait",
+				"dependsOn": [
+					{
+						"activity": "execute sp 1",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 120
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-11-20T11:36:17Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
