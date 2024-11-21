@@ -1,0 +1,602 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "talha-test-df"
+		},
+		"EMF_test_linkup_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'EMF_test_linkup'"
+		},
+		"EMF_test_linkup_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "talha-test-server.database.windows.net"
+		},
+		"EMF_test_linkup_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "EMF-testing"
+		},
+		"EMF_test_linkup_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "talha-test-server.com"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/EMF_test_linkup')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('EMF_test_linkup_properties_typeProperties_server')]",
+					"database": "[parameters('EMF_test_linkup_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('EMF_test_linkup_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('EMF_test_linkup_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EMF-stored-procedure')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "execute sp 1",
+						"description": "this is dbo. usp insert energy data stored procedure ",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[usp_InsertEnergyData]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "execute sp 2",
+						"description": "this is dbo. sp data retention stored procedure.",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_Data_Retention]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "execute sp 1",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 120
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-11-20T11:36:17Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EMF_test_linkup')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Historical_Energy_VS_Production_Pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SP_Hourly_Energy_VS_Production_RPM",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[Energy_VS_Production_Mod].[SP_Hourly_Energy_VS_Production_RPM]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Hourly_Energy_VS_Production_RPM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					},
+					{
+						"name": "SP_Historical_Energy_VS_Production",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[Energy_VS_Production_Mod].[SP_Historical_Energy_VS_Production]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Historical_Energy_VS_Production",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Historical_Energy_VS_Production"
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-09-30T11:22:34Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EMF_test_linkup')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Historical_OEE_Calculation')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SP_Historical_OEE_Calc",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Historical_OEE_Calc]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Historical_OEE_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 10
+						}
+					},
+					{
+						"name": "SP_OrderID_Downtimes_Mapping",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_OrderID_Downtimes_Mapping]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Historical_OEE_Logics"
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-09-27T05:06:27Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EMF_test_linkup')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Params_Q_P_A')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "This pipeline calculates the Quality/Performance/Availability Parameters. It runs 3 SP respectively and stores data in 3 tables",
+				"activities": [
+					{
+						"name": "SP_Live_Total_Production_Shiftwise",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_Total_Production_Shiftwise]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_Total_Production_Shiftwise",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					},
+					{
+						"name": "SP_Live_DT_Shiftwise",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2_copy2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_DT_Shiftwise]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2_copy1",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_DT_Shiftwise",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 10
+						}
+					},
+					{
+						"name": "SP_Live_OEE_Calc",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2_copy1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_OEE_Calc]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_Live_RPM_Calc",
+						"description": "Convert Raw values to RPM on Per Minute",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_RPM_Calc_INPUT]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait3",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_RPM_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SP_Live_BPM_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 10
+						}
+					},
+					{
+						"name": "SP_Live_BPM_Calc",
+						"description": "Convert Raw values to BPM on Per Minute",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_BPM_Calc_INPUT]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_Events_Downtimes_Mapping",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait4",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Events_Downtimes_Mapping]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait4",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_OEE_Calc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					},
+					{
+						"name": "SP_Live_Total_Hourly_RPM_BPM",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Wait2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[OEE_Mod].[SP_Live_Total_Hourly_RPM_BPM]"
+						},
+						"linkedServiceName": {
+							"referenceName": "EMF_test_linkup",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Wait2_copy2",
+						"type": "Wait",
+						"dependsOn": [
+							{
+								"activity": "SP_Live_Total_Hourly_RPM_BPM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 5
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Live_OEE_Logics/OEE_Parameters"
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-10-17T04:47:07Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EMF_test_linkup')]"
+			]
+		}
+	]
+}

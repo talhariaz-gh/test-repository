@@ -1,0 +1,27 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "talha-test-df"
+		},
+		"EMF_test_linkup_password": {
+			"value": ""
+		},
+		"EMF_test_linkup_properties_typeProperties_server": {
+			"value": "talha-test-server.database.windows.net"
+		},
+		"EMF_test_linkup_properties_typeProperties_database": {
+			"value": "EMF-testing"
+		},
+		"EMF_test_linkup_properties_typeProperties_userName": {
+			"value": "talha-test-server.com"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
