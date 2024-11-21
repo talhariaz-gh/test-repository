@@ -1,0 +1,75 @@
+{
+	"name": "Historical_OEE_Calculation",
+	"properties": {
+		"activities": [
+			{
+				"name": "SP_Historical_OEE_Calc",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[OEE_Mod].[SP_Historical_OEE_Calc]"
+				},
+				"linkedServiceName": {
+					"referenceName": "EMF_test_linkup",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [
+					{
+						"activity": "SP_Historical_OEE_Calc",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 10
+				}
+			},
+			{
+				"name": "SP_OrderID_Downtimes_Mapping",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[OEE_Mod].[SP_OrderID_Downtimes_Mapping]"
+				},
+				"linkedServiceName": {
+					"referenceName": "EMF_test_linkup",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "Historical_OEE_Logics"
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-09-27T05:06:27Z"
+	}
+}
