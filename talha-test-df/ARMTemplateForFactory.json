@@ -111,28 +111,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/EMF_test_linkup')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "AzureSqlDatabase",
-				"typeProperties": {
-					"server": "[parameters('EMF_test_linkup_properties_typeProperties_server')]",
-					"database": "[parameters('EMF_test_linkup_properties_typeProperties_database')]",
-					"encrypt": "mandatory",
-					"trustServerCertificate": false,
-					"authenticationType": "SQL",
-					"userName": "[parameters('EMF_test_linkup_properties_typeProperties_userName')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('EMF_test_linkup_password')]"
-					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/Historical_Energy_VS_Production_Pipeline')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -597,6 +575,28 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/EMF_test_linkup')]"
 			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EMF_test_linkup')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('EMF_test_linkup_properties_typeProperties_server')]",
+					"database": "[parameters('EMF_test_linkup_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('EMF_test_linkup_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('EMF_test_linkup_password')]"
+					}
+				}
+			},
+			"dependsOn": []
 		}
 	]
 }
