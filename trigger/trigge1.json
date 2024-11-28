@@ -1,0 +1,24 @@
+{
+	"name": "trigge1",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "Params_Q_P_A",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Minute",
+				"interval": 20,
+				"startTime": "2024-11-28T12:00:00",
+				"timeZone": "Pakistan Standard Time"
+			}
+		}
+	}
+}
